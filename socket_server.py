@@ -2,27 +2,20 @@ import time
 import socket
 import threading
 import http.server 
-from utils import respond_with_error
+from utils import respond_with_error, respond_with_success
+from crawler import crawl
 
 class RequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             try:
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
-                self.end_headers()
-                self.wfile.write(self.template().encode('utf-8'))
-                self.log_message("Root request processed successfully")
+                respond_with_success(self, 200, "Welcome to the Socket Server")
             except Exception as e:
                 respond_with_error(self, 500, "Internal Server Error")
-                
+
         elif self.path == "/health":
             try: 
-                self.send_response(200)
-                self.send_header("Content-type", "text/plain")
-                self.end_headers()
-                self.wfile.write(b"The crawler server is healthy")
-                self.log_message("Health check passed")
+                respond_with_success(self, 200, "Server is healthy")
             except Exception as e:
                 self.log_message(f"Health check failed: {e}")
                 respond_with_error(self, 500, "Internal Server Error")
@@ -30,14 +23,10 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         elif self.path == "/crawl":
             try:
                 data=crawl()  
-                self.send_response(200)
-                self.send_header("Content-type", "text/plain")
-                self.end_headers()
-                self.wfile.write(data.encode('utf-8'))
-                self.log_message("Crawl request processed successfully")
+                respond_with_success(self, 200, "Crawl request processed successfully")
             except Exception as e:
-                respond_with_error(self, 500, "Internal Server Error")
-                
+                respond_with_error(self, 500, "Internal Server Error") 
+                  
         else:
             respond_with_error(self, 404, "Not Found")
     
@@ -52,5 +41,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             </body>
         </html>
         """
-       
-           
+    def log_message(self, format, *args):
+        return  # Suppress default console logging
+
+def start_http_server(host='localhost', port=8080):
+        server = http.server.HTTPServer((host, port), RequestHandler)
+        print(f"🌐 HTTP server running at http://{host}:{port}")
+        server.serve_forever()
+            
