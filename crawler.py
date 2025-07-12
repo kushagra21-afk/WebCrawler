@@ -18,42 +18,50 @@ class Crawler:
         self.queue = deque([(source_url, 0)])
         self.headers = {"User-Agent": user_agent}
         self.max_depth = 10
-        self.token_limit = 1000
-        self.content_limit = 1000
+        self.token_limit = 10000
+        self.content_limit = 10000
         self.domain = urlparse(source_url).netloc
         self.lock = Lock()
         self.worker_nodes = 4
+        print(self.queue)
 
     def add_url(self, url, depth):
-       
-        parsed = urlparse(url)
-            
-        if not parsed.scheme:
-            url = urljoin(self.source_url, url)
-        elif parsed.netloc != self.domain:
+        try:
+            parsed = urlparse(url)
+                
+            if not parsed.scheme:
+                url = urljoin(self.source_url, url)
+            elif parsed.netloc != self.domain:
+                return False
+            with self.lock:
+                if url not in self.visited_urls:
+                    self.queue.append((url, depth))
+                    return True
             return False
-        with self.lock:
-            if url not in self.visited_urls:
-                self.queue.append((url, depth))
-                return True
-            return False
-
+        except Exception as e:
+            print(f"[Error] : {e}")
     def parse_html(self, html):
-        return BeautifulSoup(html, 'html.parser')
+        try:
+            return BeautifulSoup(html, 'html.parser')
+        except Exception as e:
+            print(f"[Error] : {e}")
 
     def extract_content(self, soup):
-        content = []
-        count = 0
-        for elem in soup.find_all(string=True):
-            if elem.parent.name in ['script', 'style', 'noscript']:
-                continue
-            text = elem.strip()
-            if text:
-                content.append(text)
-                count += len(text)
-                if count >= self.content_limit:
-                    break
-        return ' '.join(content[:self.token_limit])
+        try:
+            content = []
+            count = 0
+            for elem in soup.find_all(string=True):
+                if elem.parent.name in ['script', 'style', 'noscript', 'header', 'footer', 'nav', 'aside']:
+                    continue
+                text = elem.strip()
+                if text:
+                    content.append(text)
+                    count += len(text)
+                    if count >= self.content_limit:
+                        break
+            return ' '.join(content[:self.token_limit])
+        except Exception as e:
+            print(f"[Error] : {e}")
 
     def crawl(self,url,depth):
         with self.lock:
@@ -78,20 +86,19 @@ class Crawler:
                 except requests.RequestException as e:
                     print(f"[Error] {url}: {e}")
 
-        return list(self.visited_urls), content
+        return list(self.visited_urls)
     
     def workers(self):
         with ThreadPoolExecutor(max_workers=self.worker_nodes) as executor:
-            with self.lock:
-                urls=[]
-                while self.queue and self.worker_nodes <= len(urls):
+            futures = []
+            while True:
+                with self.lock:
+                    if not self.queue:
+                        break
                     url, depth = self.queue.popleft()
-                    if url in self.visited_urls and self.max_depth >depth:
-                        continue
-                    urls.append((url,depth))
-                for url,depth in urls:
-                    futures=[executor.submit(self.crawl,url,depth)]
-                for f in futures:
-                    f.result()   
-            print(f"\nCrawled {len(self.visited_urls)} pages.")  
-            
+                if url in self.visited_urls or depth > self.max_depth:
+                    continue
+                futures.append(executor.submit(self.crawl, url, depth))
+            for f in futures:
+                f.result()
+        print(f"\nCrawled {len(self.visited_urls)} pages.")

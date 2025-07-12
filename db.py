@@ -5,7 +5,7 @@ from threading import Lock
 
 load_dotenv()
 
-mongo_uri = os.getenv("MONGO_URI")
+mongo_uri = os.getenv("MONGODB_URI")
 client = MongoClient(mongo_uri)
 db = client["webcrawler"]
 collection = db["pages"]
@@ -21,5 +21,6 @@ def insert_content_to_db(url, title, content, depth):
         }
         with lock:
             collection.insert_one(doc)
+        print("doc inserted")
     except Exception as e:
         print(f"[MongoDB Insert Error] {url}: {e}")

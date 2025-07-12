@@ -3,8 +3,9 @@ import socket
 import threading
 import http.server 
 from utils import respond_with_error, respond_with_success
-from crawler import crawl
+from crawler import Crawler
 from collections import deque
+import json
 
 crawl_queue = deque()
 
@@ -27,19 +28,19 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 self.log_message(f"Health check failed: {e}")
                 respond_with_error(self, 500, "Internal Server Error")
                     
-        elif self.path == "/crawl":
-            if not semaphore.acquire(blocking=False):
-                respond_with_error(self, 429, "Too many crawl requests. Try again later.")
-                return
-            try:
-                from crawler import Crawler
-                crawler = Crawler(source_url="https://example.com", user_agent="WebCrawler/1.0")
-                crawler.run()  # or crawler.start() — whichever is your method
-                respond_with_success(self, 200, "Crawl request processed successfully")
-            except Exception as e:
-                respond_with_error(self, 500, f"Internal Server Error: {e}")
-            finally:
-                semaphore.release()
+        # elif self.path == "/crawl":
+        #     if not semaphore.acquire(blocking=False):
+        #         respond_with_error(self, 429, "Too many crawl requests. Try again later.")
+        #         return
+        #     try:
+    
+        #         crawler = Crawler(source_url="https://example.com", user_agent="WebCrawler/1.0")
+        #         crawler.run()  # or crawler.start() — whichever is your method
+        #         respond_with_success(self, 200, "Crawl request processed successfully")
+        #     except Exception as e:
+        #         respond_with_error(self, 500, f"Internal Server Error: {e}")
+        #     finally:
+        #         semaphore.release()
         else:
             respond_with_error(self, 404, "Not Found")
     def do_POST(self):
@@ -54,6 +55,7 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 return
             crawl_queue.append(url)
             respond_with_success(self, 202, f"URL '{url}' enqueued for crawling")
+            
     def template(self):
         return f"""
         <html>
