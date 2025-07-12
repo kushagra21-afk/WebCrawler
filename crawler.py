@@ -6,6 +6,7 @@ from threading import Lock, Thread
 from urllib.parse import urljoin, urlparse
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
+from db import insert_content_to_db
 
 dotenv.load_dotenv()
 
@@ -24,17 +25,18 @@ class Crawler:
         self.worker_nodes = 5
 
     def add_url(self, url, depth):
+       
         parsed = urlparse(url)
-        
+            
         if not parsed.scheme:
             url = urljoin(self.source_url, url)
         elif parsed.netloc != self.domain:
             return False
-
-        if url not in self.visited_urls:
-            self.queue.append((url, depth))
-            return True
-        return False
+        with self.lock:
+            if url not in self.visited_urls:
+                self.queue.append((url, depth))
+                return True
+            return False
 
     def parse_html(self, html):
         return BeautifulSoup(html, 'html.parser')
@@ -65,7 +67,10 @@ class Crawler:
                     content = self.extract_content(soup)
 
                     print(f"[{len(self.visited_urls)}] {url} - {title[:50]}")
-
+                    
+                    #insert into mongodb
+                    insert_content_to_db(url, title, content, depth)
+                    
                     # Extract and enqueue same-domain links
                     for link in soup.find_all("a", href=True):
                         self.add_url(link['href'], depth + 1)
@@ -89,3 +94,4 @@ class Crawler:
                 for f in futures:
                     f.result()   
             print(f"\nCrawled {len(self.visited_urls)} pages.")  
+            
