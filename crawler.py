@@ -17,12 +17,12 @@ class Crawler:
         self.visited_urls = set()
         self.queue = deque([(source_url, 0)])
         self.headers = {"User-Agent": user_agent}
-        self.max_depth = 4
+        self.max_depth = 10
         self.token_limit = 1000
         self.content_limit = 1000
         self.domain = urlparse(source_url).netloc
         self.lock = Lock()
-        self.worker_nodes = 5
+        self.worker_nodes = 4
 
     def add_url(self, url, depth):
        
