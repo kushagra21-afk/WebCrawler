@@ -4,12 +4,15 @@ import threading
 import http.server 
 from utils import respond_with_error, respond_with_success
 from crawler import crawl
-
+MAX_CLIENTS = 5
+semaphore = threading.Semaphore(MAX_CLIENTS)
 class RequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             try:
-                respond_with_success(self, 200, "Welcome to the Socket Server")
+                html = self.template()
+                respond_with_success(self, 200, html, content_type="text/html")
+
             except Exception as e:
                 respond_with_error(self, 500, "Internal Server Error")
 
@@ -44,8 +47,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return  # Suppress default console logging
 
-def start_http_server(host='localhost', port=8080):
-        server = http.server.HTTPServer((host, port), RequestHandler)
+def start_http_server(host='localhost', port=8000):
+        server = http.server.ThreadingHTTPServer((host, port), RequestHandler)
         print(f"🌐 HTTP server running at http://{host}:{port}")
         server.serve_forever()
             

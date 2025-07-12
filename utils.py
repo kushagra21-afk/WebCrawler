@@ -11,7 +11,7 @@ def respond_with_error(handler, code, message):
     handler.send_response(code)
     handler.send_header("Content-type", "text/plain")
     handler.end_headers()
-    handler.wfile.write(msg.encode())
+    handler.wfile.write((msg + "\n").encode())
 
 def respond_with_success(handler, code, message, content_type="application/json"):
     handler.send_response(code)
