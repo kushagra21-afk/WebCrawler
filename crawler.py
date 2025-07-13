@@ -11,35 +11,39 @@ from db import insert_content_to_db
 dotenv.load_dotenv()
 
 class Crawler:
+    
     def __init__(self, source_url, user_agent):
         self.source_url = source_url
         self.user_agent = user_agent
         self.visited_urls = set()
         self.queue = deque([(source_url, 0)])
         self.headers = {"User-Agent": user_agent}
-        self.max_depth = 10
+        self.max_depth = 2
         self.token_limit = 10000
         self.content_limit = 10000
         self.domain = urlparse(source_url).netloc
         self.lock = Lock()
         self.worker_nodes = 4
+        self.i=0
         print(self.queue)
 
     def add_url(self, url, depth):
         try:
             parsed = urlparse(url)
-                
             if not parsed.scheme:
                 url = urljoin(self.source_url, url)
             elif parsed.netloc != self.domain:
                 return False
+            
             with self.lock:
                 if url not in self.visited_urls:
                     self.queue.append((url, depth))
                     return True
             return False
+            
         except Exception as e:
             print(f"[Error] : {e}")
+            
     def parse_html(self, html):
         try:
             return BeautifulSoup(html, 'html.parser')
@@ -64,8 +68,11 @@ class Crawler:
             print(f"[Error] : {e}")
 
     def crawl(self,url,depth):
-        with self.lock:
+        
                 try:
+                    
+                    print(f"crawl: {self.i+1}")
+                    self.i+=1
                     response = requests.get(url, headers=self.headers, timeout=5)
                     response.raise_for_status()
                     self.visited_urls.add(url)
@@ -82,16 +89,17 @@ class Crawler:
                     # Extract and enqueue same-domain links
                     for link in soup.find_all("a", href=True):
                         self.add_url(link['href'], depth + 1)
-
+                    print(len(self.queue))
                 except requests.RequestException as e:
                     print(f"[Error] {url}: {e}")
 
-        return list(self.visited_urls)
+                return list(self.visited_urls)
     
     def workers(self):
+        
         with ThreadPoolExecutor(max_workers=self.worker_nodes) as executor:
             futures = []
-            while True:
+            while True: 
                 with self.lock:
                     if not self.queue:
                         break
@@ -99,6 +107,10 @@ class Crawler:
                 if url in self.visited_urls or depth > self.max_depth:
                     continue
                 futures.append(executor.submit(self.crawl, url, depth))
-            for f in futures:
-                f.result()
+               
+                for f in futures:
+                    f.result()
+                with self.lock:
+                    if not self.queue:
+                        break
         print(f"\nCrawled {len(self.visited_urls)} pages.")

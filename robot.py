@@ -7,7 +7,7 @@ from socket_server import crawl_queue
 from threading import Lock
 dotenv.load_dotenv()
 workers = int(os.getenv("robot_workers", "2"))
-interval = 60 
+interval = 600 
 lock = Lock()
 seeds = []
 def crawl_url(url):
@@ -15,6 +15,7 @@ def crawl_url(url):
     crawler.workers()
     print("Crawler started", crawler)
 def robot_worker():
+    
     with ThreadPoolExecutor(max_workers=workers) as executor:
         while True:
             with lock:
@@ -26,5 +27,8 @@ def robot_worker():
                     executor.submit(crawl_url, url)
             else:
                 print("[Robot] No new seeds")
-
+                time.sleep(10)
+                continue
             time.sleep(interval)
+
+            
