@@ -7,7 +7,7 @@ from socket_server import crawl_queue
 from threading import Lock
 dotenv.load_dotenv()
 workers = int(os.getenv("robot_workers", "2"))
-interval = 60 
+interval = 1200 
 lock = Lock()
 seeds = []
 def crawl_url(url):

@@ -56,6 +56,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
                 if not url:
                     respond_with_error(self, 400, "Missing 'url' in request body")
                     return
+                if len(crawl_queue) > 2:
+                    respond_with_error(self, 429, "Too many urls (allowed urls = 2)")
                 crawl_queue.append(url)
                 respond_with_success(self, 202, f"URL '{url}' enqueued for crawling")
             finally:
