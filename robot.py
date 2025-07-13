@@ -7,13 +7,14 @@ from socket_server import crawl_queue
 from threading import Lock
 dotenv.load_dotenv()
 workers = int(os.getenv("robot_workers", "2"))
-interval = 600 
+interval = 60 
 lock = Lock()
 seeds = []
 def crawl_url(url):
     crawler = Crawler(source_url=url,user_agent=os.getenv("USER_AGENT", "WebCrawler/1.0 contact gamerkuah21@gmail.com (educational purposes)")) 
-    crawler.workers()
     print("Crawler started", crawler)
+    crawler.workers()
+    
 def robot_worker():
     
     with ThreadPoolExecutor(max_workers=workers) as executor:
