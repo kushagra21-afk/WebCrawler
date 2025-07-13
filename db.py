@@ -14,13 +14,14 @@ lock = Lock()
 def insert_content_to_db(url, title, content, depth):
     try:
         doc = {
-            "url": url,
             "title": title,
             "content": content,
             "depth": depth
         }
         with lock:
-            collection.insert_one(doc)
-        print("doc inserted")
+            if collection.update_one({"url": url},{"$set":doc}, upsert =True):
+                print("doc updated")   
+            else:
+                print("doc inserted")
     except Exception as e:
         print(f"[MongoDB Insert Error] {url}: {e}")
