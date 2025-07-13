@@ -45,17 +45,23 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             respond_with_error(self, 404, "Not Found")
     def do_POST(self):
         if self.path == "/crawl":
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length).decode("utf-8")
-            data = json.loads(body)
-            url = data.get("url")
-
-            if not url:
-                respond_with_error(self, 400, "Missing 'url' in request body")
+            if not semaphore.acquire(blocking=False):
+                respond_with_error(self, 429, "Too many crawl requests. Try again later.")
                 return
-            crawl_queue.append(url)
-            respond_with_success(self, 202, f"URL '{url}' enqueued for crawling")
-            
+            try:
+                content_length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_length).decode("utf-8")
+                data = json.loads(body)
+                url = data.get("url")
+                if not url:
+                    respond_with_error(self, 400, "Missing 'url' in request body")
+                    return
+                crawl_queue.append(url)
+                respond_with_success(self, 202, f"URL '{url}' enqueued for crawling")
+            finally:
+                semaphore.release()
+        else:
+            respond_with_error(self, 404, "Not Found")
     def template(self):
         return f"""
         <html>
@@ -74,4 +80,3 @@ def start_http_server(host='localhost', port=8000):
         server = http.server.ThreadingHTTPServer((host, port), RequestHandler)
         print(f"🌐 HTTP server running at http://{host}:{port}")
         server.serve_forever()
-            
